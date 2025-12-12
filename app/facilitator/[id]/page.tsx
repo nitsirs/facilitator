@@ -11,7 +11,8 @@ import { RunCanvas } from "@/components/facilitator-os/run-canvas"
 import type { AppMode, Block, Participant, Workshop } from "@/lib/types"
 import { mockParticipants } from "@/lib/mock-data"
 import { startSessionRecord, completeSessionRecord, updateSessionRecord } from "@/lib/session-history"
-import { createSession, getSession } from "@/lib/session-storage"
+import { createSession } from "@/lib/session-storage"
+import { getRunning, startBlock as rcStartBlock, togglePause as rcTogglePause } from "@/lib/run-controller"
 import { getDraft, saveDraft, deleteDraft } from "@/lib/draft-storage"
 import { getWorkshop, saveWorkshop } from "@/lib/workshop-storage"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,9 @@ export default function FacilitatorPage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [joinCode, setJoinCode] = useState<string | null>(null)
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null)
+  const [sessionTimers, setSessionTimers] = useState<Record<string, number>>({})
+  const [sessionRunning, setSessionRunning] = useState<boolean>(false)
+  const [sessionCurrentBlockId, setSessionCurrentBlockId] = useState<string | null>(null)
 
   // Participants for Run mode
   const participants: Participant[] = useMemo(() => mockParticipants, [])
@@ -82,12 +86,7 @@ export default function FacilitatorPage() {
     if (mode === "RUN" && !activeSessionId) {
       // Create a real (mock) session for sync and projector
       const s = createSession(workshop)
-      if (activeBlockId) {
-        // ensure current block is set for projector
-        import("@/lib/session-storage").then(({ updateSession }) => {
-          updateSession(s.id, { currentBlockId: activeBlockId })
-        })
-      }
+      // Do not auto-start any block; facilitator will press Play
       setActiveSessionId(s.id)
       setJoinCode(s.joinCode || null)
       // Also record to archive (history)
@@ -103,12 +102,19 @@ export default function FacilitatorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
-  // Update current block in history record while running
+  // Update current block in history record while running (use session's running block)
   useEffect(() => {
-    if (historyRecordId) {
-      updateSessionRecord(historyRecordId, { currentBlockId: activeBlockId || null })
+    if (!activeSessionId || !historyRecordId) return
+    const update = async () => {
+      const { getSession } = await import("@/lib/session-storage")
+      const s = getSession(activeSessionId)
+      if (s) updateSessionRecord(historyRecordId, { currentBlockId: s.currentBlockId || null })
     }
-  }, [activeBlockId, historyRecordId])
+    update()
+    const onStorage = () => update()
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [activeSessionId, historyRecordId])
 
   // Complete session if user closes tab while running
   useEffect(() => {
@@ -118,6 +124,25 @@ export default function FacilitatorPage() {
     window.addEventListener("beforeunload", handler)
     return () => window.removeEventListener("beforeunload", handler)
   }, [historyRecordId])
+
+  // Subscribe to session state when in RUN (timers, running, current block)
+  useEffect(() => {
+    if (!activeSessionId) return
+    const update = async () => {
+      const r = getRunning(activeSessionId)
+      setSessionTimers(r.timers)
+      setSessionRunning(r.isRunning)
+      setSessionCurrentBlockId(r.runningBlockId)
+    }
+    update()
+    const onStorage = () => update()
+    window.addEventListener("storage", onStorage)
+    const t = setInterval(update, 1000)
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      clearInterval(t)
+    }
+  }, [activeSessionId])
 
   // Persist draft changes locally (in-memory) for quick editing
   useEffect(() => {
@@ -171,7 +196,13 @@ export default function FacilitatorPage() {
         <AgendaSidebar
           blocks={blocks}
           activeBlockId={activeBlockId}
-          onBlockSelect={setActiveBlockId}
+          onBlockSelect={(id) => {
+            // Selection is just for browsing/editing. It must NOT change the running block.
+            setActiveBlockId(id)
+          }}
+          timers={sessionTimers}
+          runningBlockId={sessionCurrentBlockId}
+          isRunning={sessionRunning}
           onAddBlock={(type) => {
             const id = `block-${Date.now()}`
             if (type === "survey") {
@@ -218,6 +249,20 @@ export default function FacilitatorPage() {
             })
             toast({ title: "Removed", description: "The block was removed from the agenda." })
           }}
+          onPlayBlock={
+            mode === "RUN" && activeSessionId
+              ? (blockId) => {
+                  if (sessionCurrentBlockId === blockId) {
+                    rcTogglePause(activeSessionId)
+                    setSessionRunning(!sessionRunning) // optimistic
+                  } else {
+                    rcStartBlock(activeSessionId, blockId)
+                    setSessionCurrentBlockId(blockId) // optimistic
+                    setSessionRunning(true)
+                  }
+                }
+              : undefined
+          }
         />
 
         {/* Main Canvas */}
@@ -276,9 +321,12 @@ export default function FacilitatorPage() {
           ) : (
             <RunCanvas
               activeBlock={activeBlock}
+              blocks={blocks}
               participants={participants}
               onModeChange={() => setMode("DESIGN")}
               sessionId={activeSessionId}
+              overrideRunningBlockId={sessionCurrentBlockId}
+              overrideIsRunning={sessionRunning}
             />
           )}
         </div>

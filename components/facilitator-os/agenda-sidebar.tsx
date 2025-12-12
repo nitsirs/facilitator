@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import * as ContextMenu from "@radix-ui/react-context-menu"
-import { GripVertical, MessageSquare, ClipboardList, Coffee, Plus } from "lucide-react"
+import { GripVertical, MessageSquare, ClipboardList, Coffee, Plus, Play, Pause } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Block } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -13,9 +13,23 @@ interface AgendaSidebarProps {
   onBlockSelect: (blockId: string) => void
   onAddBlock?: (type: "survey" | "discussion") => void
   onRemoveBlock?: (blockId: string) => void
+  onPlayBlock?: (blockId: string) => void
+  timers?: Record<string, number>
+  runningBlockId?: string | null
+  isRunning?: boolean
 }
 
-export function AgendaSidebar({ blocks, activeBlockId, onBlockSelect, onAddBlock, onRemoveBlock }: AgendaSidebarProps) {
+export function AgendaSidebar({
+  blocks,
+  activeBlockId,
+  onBlockSelect,
+  onAddBlock,
+  onRemoveBlock,
+  onPlayBlock,
+  timers,
+  runningBlockId,
+  isRunning,
+}: AgendaSidebarProps) {
   const totalMinutes = blocks.reduce((sum, block) => sum + block.duration, 0)
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
@@ -88,7 +102,7 @@ export function AgendaSidebar({ blocks, activeBlockId, onBlockSelect, onAddBlock
                 <button
                   onClick={() => onBlockSelect(block.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors",
+                    "group w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors",
                     "hover:bg-secondary/50",
                     isActive && "bg-primary/10 border-2 border-primary",
                   )}
@@ -102,12 +116,48 @@ export function AgendaSidebar({ blocks, activeBlockId, onBlockSelect, onAddBlock
                   >
                     <Icon className="w-4 h-4" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
                     <p className="font-medium text-sm truncate text-card-foreground">{block.title}</p>
+                    {isRunning && runningBlockId === block.id && (
+                      <span className="inline-flex items-center gap-1 text-xs text-green-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Running
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs font-medium px-2 py-1 rounded bg-muted text-muted-foreground flex-shrink-0">
                     {block.duration}m
                   </span>
+                  {typeof timers?.[block.id] === "number" && (
+                    (() => {
+                      const elapsed = timers[block.id] || 0
+                      const remaining = Math.max(0, block.duration * 60 - elapsed)
+                      const rm = Math.floor(remaining / 60)
+                      const rs = remaining % 60
+                      return (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary/50 text-muted-foreground flex-shrink-0">
+                          {String(rm).padStart(2, "0")}:{String(rs).padStart(2, "0")}
+                        </span>
+                      )
+                    })()
+                  )}
+                  {onPlayBlock && (
+                    <Button
+                      size="icon"
+                      variant="default"
+                      className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onPlayBlock(block.id)
+                      }}
+                      title={isRunning && runningBlockId === block.id ? "Pause this block" : "Play this block"}
+                    >
+                      {isRunning && runningBlockId === block.id ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  )}
                 </button>
               </ContextMenu.Trigger>
               {onRemoveBlock && (

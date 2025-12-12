@@ -16,7 +16,7 @@ export function createSession(workshop: Workshop): Session {
     title: `${workshop.title} - ${new Date().toLocaleDateString()}`,
     startedAt: new Date().toISOString(),
     status: "active",
-    currentBlockId: workshop.blocks[0]?.id,
+    currentBlockId: undefined,
     participants: mockParticipants,
     elapsedTime: 0,
     joinCode: genJoinCode(),

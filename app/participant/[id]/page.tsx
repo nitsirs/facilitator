@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import type { Session, Workshop, Block } from "@/lib/types"
+import type { Session, Workshop, Block, DiscussionBlock, SurveyBlock } from "@/lib/types"
 import { getSession, updateSession, getSessionWorkshop } from "@/lib/session-storage"
 import { Button } from "@/components/ui/button"
+import { DiscussionView } from "@/components/participant/discussion-view"
+import { SurveyView } from "@/components/participant/survey-view"
+import { getResponses, saveResponses, type ParticipantResponses } from "@/lib/participant-responses"
 
 export default function ParticipantPage() {
   const p = useParams()
@@ -12,6 +15,8 @@ export default function ParticipantPage() {
   const sp = useSearchParams()
   const [session, setSession] = useState<Session | null>(null)
   const [workshop, setWorkshop] = useState<Workshop | null>(null)
+  const [responses, setResponses] = useState<ParticipantResponses>({})
+  const [reflection, setReflection] = useState("")
   const name = sp.get("name") || "Guest"
   const pid = sp.get("pid") || "guest"
 
@@ -20,6 +25,7 @@ export default function ParticipantPage() {
     const load = () => {
       setSession(getSession(id))
       setWorkshop(getSessionWorkshop(id))
+      if (pid) setResponses(getResponses(id, pid))
     }
     load()
     const t = setInterval(load, 1000)
@@ -48,7 +54,17 @@ export default function ParticipantPage() {
     )
     updateSession(session.id, { participants })
     setSession({ ...session, participants })
+    // Persist responses
+    if (pid) saveResponses(session.id, pid, responses)
     alert("Marked as finished!")
+  }
+
+  const updateResponse = (qid: string, value: string | number | string[]) => {
+    setResponses((prev) => {
+      const next = { ...prev, [qid]: value }
+      if (pid) saveResponses(id, pid, next)
+      return next
+    })
   }
 
   return (
@@ -62,19 +78,19 @@ export default function ParticipantPage() {
         </div>
 
         {currentBlock && currentBlock.type === "discussion" && (
-          <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">Discussion Prompt</div>
-            <div className="p-4 rounded-lg border bg-card">{currentBlock.prompt || "No prompt"}</div>
-          </div>
+          <DiscussionView
+            block={currentBlock as DiscussionBlock}
+            reflection={reflection}
+            onReflectionChange={setReflection}
+          />
         )}
 
         {currentBlock && currentBlock.type === "survey" && (
-          <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">Survey</div>
-            <div className="p-4 rounded-lg border bg-card">
-              Follow facilitator instructions. (Questions UI can be added later.)
-            </div>
-          </div>
+          <SurveyView
+            block={currentBlock as SurveyBlock}
+            responses={responses}
+            onChange={updateResponse}
+          />
         )}
 
         <Button className="w-full" onClick={markFinished}>

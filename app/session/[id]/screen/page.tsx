@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import type { Session, Workshop, Block } from "@/lib/types"
 import { getSession, getSessionWorkshop } from "@/lib/session-storage"
 import { Button } from "@/components/ui/button"
-import { QrCode } from "lucide-react"
+import { QRCode } from "@/components/common/qr-code"
 
 export default function SessionScreenPage() {
   const p = useParams()
@@ -66,10 +66,11 @@ export default function SessionScreenPage() {
         {/* Join Link + QR */}
         <div className="rounded-xl border bg-card p-8 mb-8 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className="flex items-center justify-center w-28 h-28 rounded-lg bg-secondary/50">
-              {/* Placeholder QR icon; swap with real QR generator later */}
-              <QrCode className="w-16 h-16 text-muted-foreground" />
-            </div>
+            {session.joinCode && (
+              <div className="flex items-center justify-center w-32 h-32 rounded-lg bg-secondary/50">
+                <QRCode value={`/join?code=${session.joinCode}`} size={112} />
+              </div>
+            )}
             <div>
               <div className="text-xs text-muted-foreground">Join at</div>
               <div className="text-lg font-semibold">join.workshop</div>
