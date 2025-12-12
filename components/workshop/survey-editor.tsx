@@ -15,40 +15,19 @@ interface SurveyEditorProps {
 }
 
 export function SurveyEditor({ block, onUpdate }: SurveyEditorProps) {
-  const [activeSubscaleId, setActiveSubscaleId] = useState<string>(block.subscales[0]?.id || "")
+  // Ensure a single implicit section for backward compatibility
+  const [rootId] = useState<string>(block.subscales[0]?.id || `subscale-${Date.now()}`)
 
-  const activeSubscale = block.subscales.find((s) => s.id === activeSubscaleId)
-
-  const handleAddSubscale = () => {
-    const newSubscale: Subscale = {
-      id: `subscale-${Date.now()}`,
-      title: `Block ${block.subscales.length + 1}`,
-      questions: [],
+  const ensureRoot = (): Subscale => {
+    if (block.subscales.length === 0) {
+      const root: Subscale = { id: rootId, title: "Questions", questions: [] }
+      onUpdate({ ...block, subscales: [root] })
+      return root
     }
-    onUpdate({
-      ...block,
-      subscales: [...block.subscales, newSubscale],
-    })
-    setActiveSubscaleId(newSubscale.id)
+    return block.subscales[0]
   }
 
-  const handleUpdateSubscale = (updatedSubscale: Subscale) => {
-    onUpdate({
-      ...block,
-      subscales: block.subscales.map((s) => (s.id === updatedSubscale.id ? updatedSubscale : s)),
-    })
-  }
-
-  const handleDeleteSubscale = (subscaleId: string) => {
-    const newSubscales = block.subscales.filter((s) => s.id !== subscaleId)
-    onUpdate({
-      ...block,
-      subscales: newSubscales,
-    })
-    if (activeSubscaleId === subscaleId && newSubscales.length > 0) {
-      setActiveSubscaleId(newSubscales[0].id)
-    }
-  }
+  const activeSubscale = ensureRoot()
 
   const handleAddQuestion = (type: QuestionType) => {
     if (!activeSubscale) return
@@ -84,28 +63,26 @@ export function SurveyEditor({ block, onUpdate }: SurveyEditorProps) {
                 text: "Question text",
               }
 
-    handleUpdateSubscale({
-      ...activeSubscale,
-      questions: [...activeSubscale.questions, newQuestion],
-    })
+    const updated: Subscale = { ...activeSubscale, questions: [...activeSubscale.questions, newQuestion] }
+    onUpdate({ ...block, subscales: [updated] })
   }
 
   const handleUpdateQuestion = (questionId: string, updatedQuestion: Question) => {
     if (!activeSubscale) return
-
-    handleUpdateSubscale({
+    const updated: Subscale = {
       ...activeSubscale,
       questions: activeSubscale.questions.map((q) => (q.id === questionId ? updatedQuestion : q)),
-    })
+    }
+    onUpdate({ ...block, subscales: [updated] })
   }
 
   const handleDeleteQuestion = (questionId: string) => {
     if (!activeSubscale) return
-
-    handleUpdateSubscale({
+    const updated: Subscale = {
       ...activeSubscale,
       questions: activeSubscale.questions.filter((q) => q.id !== questionId),
-    })
+    }
+    onUpdate({ ...block, subscales: [updated] })
   }
 
   return (
@@ -136,93 +113,43 @@ export function SurveyEditor({ block, onUpdate }: SurveyEditorProps) {
         </div>
       </Card>
 
-      {/* Subscales Tabs */}
-      <div className="flex items-center gap-2 border-b border-border pb-2">
-        {block.subscales.map((subscale) => (
-          <button
-            key={subscale.id}
-            onClick={() => setActiveSubscaleId(subscale.id)}
-            className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-              activeSubscaleId === subscale.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-accent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {subscale.title}
-          </button>
-        ))}
-        <Button onClick={handleAddSubscale} variant="outline" size="sm" className="ml-2 gap-1 bg-transparent">
-          <Plus className="h-4 w-4" />
-          Add Block
-        </Button>
-      </div>
-
-      {/* Active Subscale Editor */}
-      {activeSubscale && (
-        <div className="space-y-6">
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-4">
-              <Label htmlFor="subscale-title">Block Title</Label>
-              {block.subscales.length > 1 && (
-                <Button
-                  onClick={() => handleDeleteSubscale(activeSubscale.id)}
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <Input
-              id="subscale-title"
-              value={activeSubscale.title}
-              onChange={(e) => handleUpdateSubscale({ ...activeSubscale, title: e.target.value })}
-              placeholder="Enter block title"
+      {/* Flat Questions (single section) */}
+      <div className="space-y-6">
+        {/* Questions */}
+        <div className="space-y-4">
+          {activeSubscale.questions.map((question) => (
+            <QuestionEditor
+              key={question.id}
+              question={question}
+              onUpdate={(updated) => handleUpdateQuestion(question.id, updated)}
+              onDelete={() => handleDeleteQuestion(question.id)}
             />
-          </Card>
-
-          {/* Questions */}
-          <div className="space-y-4">
-            {activeSubscale.questions.map((question) => (
-              <QuestionEditor
-                key={question.id}
-                question={question}
-                onUpdate={(updated) => handleUpdateQuestion(question.id, updated)}
-                onDelete={() => handleDeleteQuestion(question.id)}
-              />
-            ))}
-          </div>
-
-          {/* Add Question Buttons */}
-          <Card className="p-6 bg-card border-border">
-            <Label className="mb-3 block">Add Question</Label>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => handleAddQuestion("markdown")} variant="outline" size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                Text/Markdown
-              </Button>
-              <Button onClick={() => handleAddQuestion("likert")} variant="outline" size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                Likert Scale
-              </Button>
-              <Button
-                onClick={() => handleAddQuestion("multiple-choice")}
-                variant="outline"
-                size="sm"
-                className="gap-1"
-              >
-                <Plus className="h-4 w-4" />
-                Multiple Choice
-              </Button>
-              <Button onClick={() => handleAddQuestion("open-text")} variant="outline" size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                Open Text
-              </Button>
-            </div>
-          </Card>
+          ))}
         </div>
-      )}
+
+        {/* Add Question Buttons */}
+        <Card className="p-6 bg-card border-border">
+          <Label className="mb-3 block">Add Question</Label>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => handleAddQuestion("markdown")} variant="outline" size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Text/Markdown
+            </Button>
+            <Button onClick={() => handleAddQuestion("likert")} variant="outline" size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Likert Scale
+            </Button>
+            <Button onClick={() => handleAddQuestion("multiple-choice")} variant="outline" size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Multiple Choice
+            </Button>
+            <Button onClick={() => handleAddQuestion("open-text")} variant="outline" size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Open Text
+            </Button>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }
