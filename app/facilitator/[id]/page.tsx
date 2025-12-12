@@ -10,6 +10,8 @@ import { RunCanvas } from "@/components/facilitator-os/run-canvas"
 
 import type { AppMode, Block, Participant, Workshop } from "@/lib/types"
 import { mockParticipants } from "@/lib/mock-data"
+import { startSessionRecord, completeSessionRecord, updateSessionRecord } from "@/lib/session-history"
+import { createSession, getSession } from "@/lib/session-storage"
 import { getDraft, saveDraft, deleteDraft } from "@/lib/draft-storage"
 import { getWorkshop, saveWorkshop } from "@/lib/workshop-storage"
 import { Button } from "@/components/ui/button"
@@ -27,15 +29,19 @@ export default function FacilitatorPage() {
   const [workshopTitle, setWorkshopTitle] = useState("")
   const [blocks, setBlocks] = useState<Block[]>([])
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [joinCode, setJoinCode] = useState<string | null>(null)
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null)
 
   // Participants for Run mode
   const participants: Participant[] = useMemo(() => mockParticipants, [])
 
   // Load workshop (draft -> saved). Do not auto-seed activities.
   useEffect(() => {
-    const fromDraft = getDraft(workshopId)
     const fromSaved = getWorkshop(workshopId)
-    const source = fromDraft || fromSaved
+    const fromDraft = getDraft(workshopId)
+    // Prefer saved (published) over draft so library opens the latest
+    const source = fromSaved || fromDraft
 
     const initial: Workshop =
       source || {
@@ -61,6 +67,57 @@ export default function FacilitatorPage() {
       setActiveBlockId(blockId)
     }
   }, [searchParams])
+
+  // Start/complete session records when entering/leaving Run mode
+  useEffect(() => {
+    const workshop: Workshop = {
+      id: workshopId,
+      title: workshopTitle,
+      blocks,
+      status: "upcoming",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    if (mode === "RUN" && !activeSessionId) {
+      // Create a real (mock) session for sync and projector
+      const s = createSession(workshop)
+      if (activeBlockId) {
+        // ensure current block is set for projector
+        import("@/lib/session-storage").then(({ updateSession }) => {
+          updateSession(s.id, { currentBlockId: activeBlockId })
+        })
+      }
+      setActiveSessionId(s.id)
+      setJoinCode(s.joinCode || null)
+      // Also record to archive (history)
+      const rec = startSessionRecord(workshop, activeBlockId)
+      setHistoryRecordId(rec.id)
+    }
+    if (mode === "DESIGN" && activeSessionId) {
+      if (historyRecordId) completeSessionRecord(historyRecordId)
+      setActiveSessionId(null)
+      setJoinCode(null)
+      setHistoryRecordId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
+
+  // Update current block in history record while running
+  useEffect(() => {
+    if (historyRecordId) {
+      updateSessionRecord(historyRecordId, { currentBlockId: activeBlockId || null })
+    }
+  }, [activeBlockId, historyRecordId])
+
+  // Complete session if user closes tab while running
+  useEffect(() => {
+    const handler = () => {
+      if (historyRecordId) completeSessionRecord(historyRecordId)
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [historyRecordId])
 
   // Persist draft changes locally (in-memory) for quick editing
   useEffect(() => {
@@ -187,6 +244,24 @@ export default function FacilitatorPage() {
               </Button>
               <div className="w-px h-6 bg-border" />
               <Button size="sm" onClick={handlePublish}>Publish</Button>
+              {mode === "RUN" && activeSessionId && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(`/session/${activeSessionId}/screen`, "_blank")}
+                  >
+                    Projector View
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(`/join?code=${joinCode || ""}`, "_blank")}
+                  >
+                    Join Code {joinCode || "—"}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -203,6 +278,7 @@ export default function FacilitatorPage() {
               activeBlock={activeBlock}
               participants={participants}
               onModeChange={() => setMode("DESIGN")}
+              sessionId={activeSessionId}
             />
           )}
         </div>

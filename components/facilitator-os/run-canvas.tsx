@@ -5,39 +5,58 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Play, Pause, Plus, X, QrCode } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Block, Participant } from "@/lib/types"
+import type { Block, Participant, Session } from "@/lib/types"
+import { getSession, updateSession } from "@/lib/session-storage"
 
 interface RunCanvasProps {
   activeBlock: Block | undefined
   participants: Participant[]
   onModeChange: () => void
+  sessionId?: string | null
 }
 
-export function RunCanvas({ activeBlock, participants, onModeChange }: RunCanvasProps) {
-  const [isRunning, setIsRunning] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(activeBlock?.duration ? activeBlock.duration * 60 : 300)
+export function RunCanvas({ activeBlock, participants, onModeChange, sessionId }: RunCanvasProps) {
+  const [session, setSession] = useState<Session | null>(null)
 
+  // Load session and subscribe to changes
   useEffect(() => {
-    if (activeBlock) {
-      setTimeLeft(activeBlock.duration * 60)
-      setIsRunning(false)
+    if (!sessionId) return
+    const s = getSession(sessionId)
+    setSession(s)
+    const onStorage = () => {
+      const cur = getSession(sessionId)
+      if (cur) setSession(cur)
     }
-  }, [activeBlock])
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [sessionId])
 
+  // Keep current block synced to session
   useEffect(() => {
-    let interval: NodeJS.Timeout
-
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => Math.max(0, prev - 1))
-      }, 1000)
+    if (!session || !activeBlock) return
+    if (session.currentBlockId !== activeBlock.id) {
+      updateSession(session.id, { currentBlockId: activeBlock.id })
+      setSession({ ...session, currentBlockId: activeBlock.id })
     }
+  }, [activeBlock, session])
 
-    return () => clearInterval(interval)
-  }, [isRunning, timeLeft])
+  // Increment per-block timer when running
+  useEffect(() => {
+    if (!session || !session.isRunning || !session.currentBlockId) return
+    const t = setInterval(() => {
+      const cur = getSession(session.id)
+      if (!cur || !cur.isRunning || !cur.currentBlockId) return
+      const timers = { ...(cur.timers || {}) }
+      timers[cur.currentBlockId] = (timers[cur.currentBlockId] || 0) + 1
+      updateSession(cur.id, { timers })
+      setSession({ ...cur, timers })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [session])
 
-  const minutes = Math.floor(timeLeft / 60)
-  const seconds = timeLeft % 60
+  const seconds = activeBlock && session ? session.timers?.[activeBlock.id] || 0 : 0
+  const minutes = Math.floor(seconds / 60)
+  const secondsR = seconds % 60
 
   if (!activeBlock) {
     return (
@@ -71,19 +90,28 @@ export function RunCanvas({ activeBlock, participants, onModeChange }: RunCanvas
                 <div
                   className={cn(
                     "text-9xl font-bold font-mono tabular-nums tracking-tight",
-                    timeLeft < 60 && timeLeft > 0 && "text-destructive",
-                    timeLeft === 0 && "text-destructive animate-pulse",
+                    seconds < 60 && seconds > 0 && "text-destructive",
+                    seconds === 0 && session?.isRunning && "text-destructive animate-pulse",
                   )}
                 >
-                  {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+                  {String(minutes).padStart(2, "0")}:{String(secondsR).padStart(2, "0")}
                 </div>
-                <p className="text-muted-foreground mt-2 text-sm">Time Remaining</p>
+                <p className="text-muted-foreground mt-2 text-sm">Time Elapsed (Block)</p>
               </div>
 
               {/* Play/Pause Control */}
               <div className="flex gap-4">
-                <Button size="lg" onClick={() => setIsRunning(!isRunning)} className="w-48 h-16 text-lg gap-3">
-                  {isRunning ? (
+                <Button
+                  size="lg"
+                  onClick={() => {
+                    if (!session) return
+                    const next = !session.isRunning
+                    updateSession(session.id, { isRunning: next })
+                    setSession({ ...session, isRunning: next })
+                  }}
+                  className="w-48 h-16 text-lg gap-3"
+                >
+                  {session?.isRunning ? (
                     <>
                       <Pause className="w-6 h-6" />
                       Pause
@@ -98,7 +126,13 @@ export function RunCanvas({ activeBlock, participants, onModeChange }: RunCanvas
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => setTimeLeft((prev) => prev + 60)}
+                  onClick={() => {
+                    if (!session || !activeBlock) return
+                    const timers = { ...(session.timers || {}) }
+                    timers[activeBlock.id] = (timers[activeBlock.id] || 0) + 60
+                    updateSession(session.id, { timers })
+                    setSession({ ...session, timers })
+                  }}
                   className="h-16 px-6 gap-2"
                 >
                   <Plus className="w-5 h-5" />1 Min
@@ -171,9 +205,9 @@ export function RunCanvas({ activeBlock, participants, onModeChange }: RunCanvas
               <QrCode className="w-24 h-24 text-muted-foreground" />
               <div className="text-center">
                 <p className="text-4xl font-bold font-mono">
-                  {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+                  {String(minutes).padStart(2, "0")}:{String(secondsR).padStart(2, "0")}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">Join at workshop.app</p>
+                <p className="text-xs text-muted-foreground mt-2">Join at join.workshop • Code {session?.joinCode}</p>
               </div>
             </div>
           </CardContent>

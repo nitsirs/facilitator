@@ -1,6 +1,13 @@
 import type { Session, Workshop } from "./types"
 import { mockParticipants } from "./mock-data"
 
+function genJoinCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  let code = ""
+  for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)]
+  return code
+}
+
 export function createSession(workshop: Workshop): Session {
   const sessionId = `s${Date.now()}`
   const session: Session = {
@@ -12,6 +19,9 @@ export function createSession(workshop: Workshop): Session {
     currentBlockId: workshop.blocks[0]?.id,
     participants: mockParticipants,
     elapsedTime: 0,
+    joinCode: genJoinCode(),
+    isRunning: false,
+    timers: Object.fromEntries(workshop.blocks.map((b) => [b.id, 0])),
   }
 
   // Store in localStorage

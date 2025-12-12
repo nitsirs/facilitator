@@ -76,5 +76,9 @@ export interface Session {
   status: "active" | "paused" | "completed"
   currentBlockId?: string
   participants: Participant[]
-  elapsedTime: number // in seconds
+  elapsedTime: number // legacy total in seconds
+  // New optional fields for richer mock sync
+  joinCode?: string
+  isRunning?: boolean
+  timers?: Record<string, number> // per-block timers in seconds
 }
