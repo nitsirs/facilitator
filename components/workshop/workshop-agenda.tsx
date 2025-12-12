@@ -7,7 +7,6 @@ import { Plus, FileText, MessageSquare, Coffee, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Block } from "@/lib/types"
 import { useRouter } from "next/navigation"
-import { createSession } from "@/lib/session-storage"
 
 interface WorkshopAgendaProps {
   blocks: Block[]
@@ -49,22 +48,8 @@ export function WorkshopAgenda({ blocks, activeBlockId, onBlockSelect, onAddBloc
   const handlePlayBlock = (e: React.MouseEvent, blockId: string) => {
     e.stopPropagation()
 
-    // Get workshop from storage
-    const workshop = {
-      id: workshopId,
-      title: "Workshop",
-      blocks,
-      status: "draft" as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    // Create session and set current block
-    const session = createSession(workshop)
-    session.currentBlockId = blockId
-
-    // Navigate to session dashboard
-    router.push(`/session/${session.id}/dashboard`)
+    // Navigate to unified facilitator run mode on the selected block
+    router.push(`/facilitator/${workshopId}?mode=run&block=${blockId}`)
   }
 
   return (

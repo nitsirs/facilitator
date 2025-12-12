@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { HomeSidebar } from "@/components/home/sidebar"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,13 +10,15 @@ import { Button } from "@/components/ui/button"
 import { Search, Plus, Clock, Calendar, FileText, Filter, Play } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { mockWorkshops } from "@/lib/mock-data"
 import type { Workshop } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { getWorkshops } from "@/lib/workshop-storage"
+import { saveDraft } from "@/lib/draft-storage"
+import { mockWorkshops } from "@/lib/mock-data"
 
 export default function LibraryPage() {
   const router = useRouter()
-  const [workshops, setWorkshops] = useState<Workshop[]>(mockWorkshops)
+  const [workshops, setWorkshops] = useState<Workshop[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "upcoming" | "completed">("all")
 
@@ -29,8 +31,19 @@ export default function LibraryPage() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
+    saveDraft(newWorkshop)
     setWorkshops([newWorkshop, ...workshops])
+    router.push(`/facilitator/${newWorkshop.id}`)
   }
+
+  useEffect(() => {
+    const saved = getWorkshops()
+    if (saved.length > 0) {
+      setWorkshops(saved)
+    } else {
+      setWorkshops(mockWorkshops)
+    }
+  }, [])
 
   const filteredWorkshops = workshops
     .filter((w) => w.title.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -153,15 +166,11 @@ function WorkshopCard({ workshop }: { workshop: Workshop }) {
     e.preventDefault()
     e.stopPropagation()
 
-    // Import dynamically to avoid SSR issues
-    import("@/lib/session-storage").then(({ createSession }) => {
-      const session = createSession(workshop)
-      router.push(`/session/${session.id}/dashboard`)
-    })
+    router.push(`/facilitator/${workshop.id}?mode=run`)
   }
 
   return (
-    <Link href={`/workshop/${workshop.id}`}>
+    <Link href={`/facilitator/${workshop.id}`}>
       <Card
         className={cn(
           "p-6 hover:shadow-lg transition-all cursor-pointer border-border bg-card",

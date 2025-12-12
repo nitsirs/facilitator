@@ -102,6 +102,7 @@ export default function WorkshopEditorPage() {
       title: "Workshop published",
       description: "Your workshop has been saved successfully.",
     })
+    router.push("/library")
   }
 
   if (!workshop) {

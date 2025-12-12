@@ -108,15 +108,11 @@ function WorkshopCard({ workshop }: { workshop: Workshop }) {
     e.preventDefault()
     e.stopPropagation()
 
-    // Import dynamically to avoid SSR issues
-    import("@/lib/session-storage").then(({ createSession }) => {
-      const session = createSession(workshop)
-      router.push(`/session/${session.id}/dashboard`)
-    })
+    router.push(`/facilitator/${workshop.id}?mode=run`)
   }
 
   return (
-    <Link href={`/workshop/${workshop.id}`}>
+    <Link href={`/facilitator/${workshop.id}`}>
       <Card
         className={cn(
           "p-6 hover:shadow-lg transition-all cursor-pointer border-border bg-card",
