@@ -29,9 +29,7 @@ export default function SessionScreenPage() {
 
   if (!session || !workshop) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white/70">
-        Loading…
-      </div>
+      <div className="h-screen flex items-center justify-center bg-background text-muted-foreground">Loading…</div>
     )
   }
 
@@ -41,36 +39,49 @@ export default function SessionScreenPage() {
   const s = seconds % 60
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-12 text-center">
-      <div className="text-[10rem] font-bold text-white tabular-nums leading-none">
-        {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
-      </div>
-      <div className="text-2xl text-white/70 mt-4">Time Remaining</div>
-
-      {currentBlock && (
-        <div className="mt-12 w-full max-w-5xl">
-          <div className="mb-8">
-            <div className="inline-block px-5 py-2 rounded-full bg-primary/20 text-primary text-xl font-semibold mb-4 capitalize">
-              {currentBlock.type}
-            </div>
-            <h1 className="text-5xl font-bold text-white mb-4">{currentBlock.title}</h1>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="max-w-6xl mx-auto p-10">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">{workshop.title || "Workshop"}</h1>
+            <p className="text-sm text-muted-foreground">Projector View</p>
           </div>
-
-          {currentBlock.type === "discussion" ? (
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-10 border-2 border-white/20">
-              <p className="text-3xl text-white leading-relaxed">{currentBlock.prompt || "Awaiting instructions…"}</p>
-            </div>
-          ) : (
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-10 border-2 border-white/20">
-              <p className="text-3xl text-white">Please follow facilitator instructions and complete the survey on your device</p>
-            </div>
-          )}
+          <div className="text-right">
+            <div className="text-xs text-muted-foreground">Join at join.workshop</div>
+            <div className="text-2xl font-semibold tracking-widest">{session.joinCode}</div>
+          </div>
         </div>
-      )}
 
-      <div className="mt-14 text-white/80">
-        Join at <span className="font-semibold">join.workshop</span> and enter code
-        <span className="ml-2 text-3xl font-bold tracking-widest">{session.joinCode}</span>
+        {/* Timer */}
+        <div className="rounded-xl border bg-card p-10 mb-8 text-center">
+          <div className="text-9xl font-bold font-mono tabular-nums">
+            {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
+          </div>
+          <div className="text-sm text-muted-foreground mt-2">Time Elapsed (Block)</div>
+        </div>
+
+        {/* Current Activity */}
+        {currentBlock && (
+          <div className="rounded-xl border bg-card p-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Current Activity</div>
+                <div className="text-2xl font-semibold">{currentBlock.title}</div>
+              </div>
+              <div className="px-2 py-1 text-xs rounded bg-accent/20 text-accent capitalize">{currentBlock.type}</div>
+            </div>
+            {currentBlock.type === "discussion" ? (
+              <div className="p-6 rounded-lg bg-secondary/30 text-lg leading-relaxed">
+                {currentBlock.prompt || "Awaiting instructions…"}
+              </div>
+            ) : (
+              <div className="p-6 rounded-lg bg-secondary/30 text-lg leading-relaxed">
+                Please follow facilitator instructions and complete the survey on your device.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
