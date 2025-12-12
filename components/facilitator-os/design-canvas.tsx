@@ -2,12 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Play } from "lucide-react"
 import type { Block, DiscussionBlock, SurveyBlock } from "@/lib/types"
+import { DiscussionEditor } from "@/components/workshop/discussion-editor"
+import { SurveyEditor } from "@/components/workshop/survey-editor"
 
 interface DesignCanvasProps {
   workshopTitle: string
@@ -59,104 +58,5 @@ export function DesignCanvas({
         </div>
       </div>
     </div>
-  )
-}
-
-function DiscussionEditor({
-  block,
-  onUpdate,
-}: {
-  block: DiscussionBlock
-  onUpdate: (block: Block) => void
-}) {
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Discussion Prompt</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="prompt">Prompt Text</Label>
-            <Textarea
-              id="prompt"
-              value={block.prompt}
-              onChange={(e) => onUpdate({ ...block, prompt: e.target.value })}
-              className="mt-2 min-h-32"
-              placeholder="Enter the discussion prompt..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={block.duration}
-                onChange={(e) => onUpdate({ ...block, duration: Number.parseInt(e.target.value) || 0 })}
-                className="mt-2"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="grouping">Grouping Strategy</Label>
-              <Select
-                value={block.groupingMethod}
-                onValueChange={(value) =>
-                  onUpdate({ ...block, groupingMethod: value as DiscussionBlock["groupingMethod"] })
-                }
-              >
-                <SelectTrigger id="grouping" className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="random">Random</SelectItem>
-                  <SelectItem value="table-based">Table-based</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </>
-  )
-}
-
-function SurveyEditor({ block, onUpdate }: { block: SurveyBlock; onUpdate: (block: Block) => void }) {
-  return (
-    <>
-      {block.subscales.map((subscale) => (
-        <Card key={subscale.id}>
-          <CardHeader>
-            <CardTitle>{subscale.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {subscale.questions.map((question, idx) => (
-              <div key={question.id} className="p-4 bg-secondary/30 rounded-lg">
-                {question.type === "markdown" ? (
-                  <p className="text-sm text-muted-foreground">{question.text}</p>
-                ) : (
-                  <>
-                    <p className="font-medium text-sm mb-2">
-                      Question {idx}. {question.text}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Type: {question.type}
-                      {question.scale && ` (${question.scale.min}-${question.scale.max})`}
-                      {question.options && ` (${question.options.length} options)`}
-                    </p>
-                  </>
-                )}
-              </div>
-            ))}
-            <Button variant="outline" size="sm" className="mt-2 bg-transparent">
-              Add Question
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
-    </>
   )
 }
