@@ -12,7 +12,6 @@ import { QRCode } from "@/components/common/qr-code"
 interface RunCanvasProps {
   activeBlock: Block | undefined
   blocks?: Block[]
-  participants: Participant[]
   onModeChange: () => void
   sessionId?: string | null
   overrideRunningBlockId?: string | null
@@ -22,7 +21,6 @@ interface RunCanvasProps {
 export function RunCanvas({
   activeBlock,
   blocks = [],
-  participants,
   onModeChange,
   sessionId,
   overrideRunningBlockId,
@@ -134,10 +132,10 @@ export function RunCanvas({
           <Card className="bg-card">
             <CardContent className="p-6">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
-                Participants ({participants.length})
+                Participants ({session?.participants?.length || 0})
               </h3>
               <div className="grid grid-cols-6 gap-4">
-                {participants.map((participant) => (
+                {(session?.participants || []).map((participant) => (
                   <div key={participant.id} className="flex flex-col items-center gap-2">
                     <div className="relative">
                       <div

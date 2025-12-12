@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { getSessions } from "@/lib/session-storage"
+import { getSessions, getSession, updateSession } from "@/lib/session-storage"
 
 export default function JoinPage() {
   const router = useRouter()
@@ -22,6 +22,19 @@ export default function JoinPage() {
     const s = sessions.find((x) => x.joinCode?.toUpperCase() === code.trim().toUpperCase())
     if (!s) return alert("Session not found")
     const pid = `u${Date.now()}`
+    // Add to session participants list (real-time for facilitator)
+    const live = getSession(s.id)
+    if (live) {
+      const exists = (live.participants || []).some((p) => p.id === pid)
+      if (!exists) {
+        updateSession(live.id, {
+          participants: [
+            ...(live.participants || []),
+            { id: pid, name: name || "Guest", avatar: "", status: "thinking" },
+          ],
+        })
+      }
+    }
     router.push(`/participant/${s.id}?name=${encodeURIComponent(name || "Guest")}&pid=${pid}`)
   }
 
@@ -38,4 +51,3 @@ export default function JoinPage() {
     </div>
   )
 }
-

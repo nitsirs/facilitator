@@ -322,7 +322,6 @@ export default function FacilitatorPage() {
             <RunCanvas
               activeBlock={activeBlock}
               blocks={blocks}
-              participants={participants}
               onModeChange={() => setMode("DESIGN")}
               sessionId={activeSessionId}
               overrideRunningBlockId={sessionCurrentBlockId}

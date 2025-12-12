@@ -67,6 +67,24 @@ export default function ParticipantPage() {
     })
   }
 
+  // Mark thinking while typing; provide Help and Done buttons
+  useEffect(() => {
+    if (!session || !pid) return
+    const participants = (session.participants || []).map((p) =>
+      p.id === pid ? { ...p, name, status: "thinking" } : p,
+    )
+    updateSession(session.id, { participants })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [responses])
+
+  const markHelp = () => {
+    if (!session || !pid) return
+    const participants = (session.participants || []).map((p) =>
+      p.id === pid ? { ...p, name, status: "help-needed" } : p,
+    )
+    updateSession(session.id, { participants })
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
@@ -93,9 +111,14 @@ export default function ParticipantPage() {
           />
         )}
 
-        <Button className="w-full" onClick={markFinished}>
-          I'm Done
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={markHelp}>
+            Need Help
+          </Button>
+          <Button className="flex-1" onClick={markFinished}>
+            I'm Done
+          </Button>
+        </div>
       </div>
     </div>
   )
