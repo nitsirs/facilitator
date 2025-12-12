@@ -17,7 +17,7 @@ export default function HomePage() {
   const handleCreateWorkshop = () => {
     const newWorkshop: Workshop = {
       id: `w${Date.now()}`,
-      title: "Untitled Workshop",
+      title: "",
       blocks: [],
       status: "draft",
       createdAt: new Date().toISOString(),

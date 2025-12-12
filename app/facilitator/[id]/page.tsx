@@ -9,7 +9,7 @@ import { DesignCanvas } from "@/components/facilitator-os/design-canvas"
 import { RunCanvas } from "@/components/facilitator-os/run-canvas"
 
 import type { AppMode, Block, Participant, Workshop } from "@/lib/types"
-import { initialBlocks, mockParticipants, mockWorkshops } from "@/lib/mock-data"
+import { mockParticipants } from "@/lib/mock-data"
 import { getDraft, saveDraft, deleteDraft } from "@/lib/draft-storage"
 import { getWorkshop, saveWorkshop } from "@/lib/workshop-storage"
 import { Button } from "@/components/ui/button"
@@ -24,33 +24,32 @@ export default function FacilitatorPage() {
   const searchParams = useSearchParams()
 
   const [mode, setMode] = useState<AppMode>("DESIGN")
-  const [workshopTitle, setWorkshopTitle] = useState("Untitled Workshop")
+  const [workshopTitle, setWorkshopTitle] = useState("")
   const [blocks, setBlocks] = useState<Block[]>([])
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
 
   // Participants for Run mode
   const participants: Participant[] = useMemo(() => mockParticipants, [])
 
-  // Load workshop (draft -> saved -> mock)
+  // Load workshop (draft -> saved). Do not auto-seed activities.
   useEffect(() => {
     const fromDraft = getDraft(workshopId)
     const fromSaved = getWorkshop(workshopId)
-    const fromMock = mockWorkshops.find((w) => w.id === workshopId)
-    const source = fromDraft || fromSaved || fromMock
+    const source = fromDraft || fromSaved
 
     const initial: Workshop =
       source || {
         id: workshopId,
         title: "Untitled Workshop",
-        blocks: initialBlocks,
+        blocks: [],
         status: "draft",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
 
     setWorkshopTitle(initial.title)
-    setBlocks(initial.blocks.length > 0 ? initial.blocks : initialBlocks)
-    setActiveBlockId((initial.blocks[0] || initialBlocks[0])?.id || null)
+    setBlocks(initial.blocks)
+    setActiveBlockId(initial.blocks[0]?.id || null)
   }, [workshopId])
 
   // If query sets mode=run, open Run view initially

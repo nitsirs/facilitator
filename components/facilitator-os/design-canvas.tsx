@@ -38,6 +38,7 @@ export function DesignCanvas({
         <Input
           value={workshopTitle}
           onChange={(e) => onTitleChange(e.target.value)}
+          placeholder="Untitled Workshop"
           className="text-2xl font-bold bg-transparent border-none focus-visible:ring-0 px-0 max-w-2xl"
         />
         <Button onClick={onModeChange} size="lg" className="gap-2">
