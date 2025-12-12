@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Play, Pause, Plus, X, QrCode } from "lucide-react"
+import { Play, Pause, Plus, X, QrCode, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Block, Participant, Session } from "@/lib/types"
 import { getSession, updateSession } from "@/lib/session-storage"
@@ -208,6 +208,14 @@ export function RunCanvas({ activeBlock, participants, onModeChange, sessionId }
                   {String(minutes).padStart(2, "0")}:{String(secondsR).padStart(2, "0")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Join at join.workshop • Code {session?.joinCode}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 gap-1"
+                  onClick={() => window.open(`/join?code=${session?.joinCode || ""}`, "_blank")}
+                >
+                  <ExternalLink className="w-3 h-3" /> Open Join Link
+                </Button>
               </div>
             </div>
           </CardContent>

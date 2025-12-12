@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import type { Session, Workshop, Block } from "@/lib/types"
 import { getSession, getSessionWorkshop } from "@/lib/session-storage"
+import { Button } from "@/components/ui/button"
+import { QrCode } from "lucide-react"
 
 export default function SessionScreenPage() {
   const p = useParams()
@@ -59,6 +61,31 @@ export default function SessionScreenPage() {
             {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
           </div>
           <div className="text-sm text-muted-foreground mt-2">Time Elapsed (Block)</div>
+        </div>
+
+        {/* Join Link + QR */}
+        <div className="rounded-xl border bg-card p-8 mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center justify-center w-28 h-28 rounded-lg bg-secondary/50">
+              {/* Placeholder QR icon; swap with real QR generator later */}
+              <QrCode className="w-16 h-16 text-muted-foreground" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Join at</div>
+              <div className="text-lg font-semibold">join.workshop</div>
+              <div className="text-sm mt-1">
+                Code: <span className="font-mono font-semibold tracking-widest">{session.joinCode}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => window.open(`/join?code=${session.joinCode}`, "_blank")}
+            >
+              Open Join Link
+            </Button>
+          </div>
         </div>
 
         {/* Current Activity */}
